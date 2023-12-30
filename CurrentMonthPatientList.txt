@@ -1,0 +1,30 @@
+--SELECT BusinessUnitName FROM Data.vBusinessUnit ORDER BY BusinessUnitName
+SELECT b.BusinessUnitName [BusinessUnit], d.Description [LevelOfCare], p.PatientLastName + ', ' + p.PatientFirstName [Patient],  a.AdmittedDate [AdmittedDate], a.CurrentAdmissionStatus [CurrentAdmissionStatus], a.DischargedDate [DischargedDate], a.DayOfDeath [DayOfDeath],
+DATEDIFF(day,
+ CASE
+ WHEN a.AdmittedDate IS NULL THEN GETDATE()
+ WHEN a.AdmittedDate > DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0) THEN a.AdmittedDate
+ ELSE DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
+ END,
+ CASE
+ WHEN a.DischargedDate IS NULL AND a.DayOfDeath IS NULL THEN GETDATE()
+ WHEN a.DischargedDate IS NOT NULL AND a.DischargedDate >= 
+    CASE
+    WHEN a.AdmittedDate > DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
+    THEN a.AdmittedDate
+    ELSE DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
+ END THEN a.DischargedDate
+ WHEN a.DayOfDeath IS NOT NULL AND a.DayOfDeath >=
+    CASE
+    WHEN a.AdmittedDate > DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
+    THEN a.AdmittedDate
+    ELSE DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
+    END THEN a.DayOfDeath
+END) [TotalPatientDays]
+FROM Data.vAdmission a
+ JOIN Data.vPatient p ON p.PatientKey = a.PatientKey
+ JOIN Data.vBusinessUnit b ON b.BusinessUnitKey = a.BusinessUnitKey
+ JOIN Data.vDailyCharge d ON d.AdmissionKey = a.AdmissionKey
+WHERE b.BusinessUnitName LIKE '%HOS%'
+ GROUP BY b.BusinessUnitName, p.PatientLastName + ', ' + p.PatientFirstName, a.AdmittedDate, a.CurrentAdmissionStatus, a.DischargedDate, a.DayOfDeath, d.Description
+ ORDER BY b.BusinessUnitName, p.PatientLastName + ', ' + p.PatientFirstName
